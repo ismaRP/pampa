@@ -196,11 +196,11 @@ def assign_spectrum(spectrum, mass_markers_list, set_of_markers, resolution, tax
         else:
             eq_taxid={taxid}
         if taxonomy:
-                lca=taxonomy.lca(eq_taxid)
+            lca=taxonomy.lca(eq_taxid)
         pvalue= taxid_to_pvalue[taxid]
         score=taxid_to_score[taxid]
         taxids=list({Taxon(taxid, None) for taxid in eq_taxid})
-        set_of_peaks=taxid_to_annotated_peaks[taxid]     
+        set_of_peaks=taxid_to_annotated_peaks[taxid]
         a=Assignment(spectrum.name, len(spectrum), list(set_of_peaks), taxids, lca, None, None, score, None, None, None, pvalue)
         list_of_assignments.append(a)
     return list_of_assignments
@@ -274,8 +274,9 @@ def create_main_result_file(output, list_of_assignments, taxonomy):
                 s=s+str(round(name_to_peak[(name,ptm)],3))
             s=s+"\t"
         if taxonomy:
-            if a.lca!=None:
-                s=s+"{:.2e}".format(a.pvalue)+"\t"+str(a.score)+"\t"+str(a.lca) + " ["+ a.lca_name+ "]\t" + a.lca_rank +"\t"+str(a.hca)+ " ["+ a.hca_name + "]\t" + a.hca_rank +"\t"
+            if a.lca is not None:
+                # hca gives None, turn to string
+                s=s+"{:.2e}".format(a.pvalue)+"\t"+str(a.score)+"\t"+str(a.lca) + " ["+ a.lca_name+ "]\t" + a.lca_rank +"\t"+str(a.hca)+ " ["+ str(a.hca_name) + "]\t" + str(a.hca_rank) +"\t"
             else:
                 s=s+"\t None\t\t\t\t" 
         else:
