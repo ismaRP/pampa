@@ -1,16 +1,20 @@
 #!/usr/bin/env python3
 
 import json
+import sys
+import os
 
 def parse_config_file():
-    with open('config.json') as json_file:
+    config_file = os.path.dirname(sys.argv[0]) + "/config.json"
+    with open(config_file) as json_file:
         data = json.load(json_file)
         return data
-# TO DO: add PTM definition here
-# TO DO: add warning when the file is not found
+# TODO: add PTM definition here
+# TODO: add warning when the file is not found
 
 def sort_headers(set_of_headers):
-    with open('config.json') as json_file:
+    config_file = os.path.dirname(sys.argv[0]) + "/config.json"
+    with open(config_file) as json_file:
         data = json.load(json_file)
     list_of_selected_headers=[]
     list_of_other_headers=[]
