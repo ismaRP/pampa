@@ -1,0 +1,17 @@
+---
+params:
+  SGF:
+    polynomial_order: 4
+    frame_length: 19
+  BC:
+    struc_elem_length: 3.0
+  NORM:
+    method: 'to_TIC'
+  PP:
+    peak_width: 1.5
+    signal_to_noise_: 5.0
+    spacing_difference: 1.5
+    sn_win_len_: 200.0
+    check_width_internally: 'true'
+    clear_meta_data: 'true'
+    ms1_only: 'true'
