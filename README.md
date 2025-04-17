@@ -3,7 +3,7 @@
 __PAMPA (Protein Analysis by Mass Spectrometry for Ancient Species)__ is a versatile software suite tailored to effectively handle various tasks associated with ZooMS (Zooarchaeology by Mass Spectrometry) data and peptide markers.
 
 
-### How to install the program ?
+## Installation
 
 PAMPA is written in Python 3.7, and can be installed either by downloading the source code or cloning this repository.  
 
@@ -16,17 +16,19 @@ PAMPA necessitates the Biopython, pyteomics and scipy libraries.
  - pyteomics (https://pypi.org/project/pyteomics/)
  - scipy.stats (https://scipy.org/)
 
-
-
-### How to use the program ?
+## Documentation
 
 The documentation for PAMPA is available on PAMPA's wiki: https://github.com/touzet/pampa/wiki
 
-### Peptide tables
+## Peptide tables for COL1A1 and COL1A2 markers
 
 Spreadsheet for [mammals](https://docs.google.com/spreadsheets/d/1nwELNshZxF0h6DkIFNAYXDJqmq4NOSUOLWQlTZIzUDQ) (download [TSV](https://github.com/touzet/pampa/blob/main/Peptide_tables/table_mammals.tsv))
 
-### Bug Report
+## COL1A1 and COL1A2 sequences
+
+See this repository: https://github.com/touzet/pampa_sequences
+
+## Bug Report
 
 PAMPA is still under development. If you come across any bugs or unexpected behavior, please take a moment to report it using our GitHub Issues page. Just click on the "Issues" tab above and create a new issue. You may also contact the author (helene.touzet@univ-lille.fr).
 
