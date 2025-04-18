@@ -35,8 +35,9 @@ def main():
     group2.add_argument('-p', '--paramfile', dest="param_file", type=str, required=False,
         help="Path yo YAML with parameters for preprocessing"
     )
-    group2.add_argument('-r', dest="repl_to_sample", type=str, required=False,
-        help="Table in csv mapping replicate spectra names/IDs to sample name for rpelicate merging."
+    group2.add_argument('-r', '--repl_to_sample', dest="repl_to_sample", type=str, required=False,
+        help="Table in csv mapping replicate spectra names/IDs to sample name for replicate merging."
+             "Each row contains \"spectra_name,sample_name\", eg. \"abc_1,abc\""
              "If not given, it is inferred from the spectrum IDs (abc_1, abc_2, abc_3 -> abc)"
     )
 

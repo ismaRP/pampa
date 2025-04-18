@@ -3,6 +3,7 @@ import os
 import pyopenms as oms
 import numpy as np
 import matplotlib.pyplot as plt
+import csv
 from itertools import product
 import pandas as pd
 import textwrap
@@ -40,6 +41,21 @@ def fix_peaks_int(peaks_exp, profile_exp):
     peaks_exp.setSpectra(new_spectra)
     return peaks_exp
 
+def map_repl_spectra_id(deiso_exp):
+    key_spectra = dict()
+    for spec in deiso_exp.getSpectra():
+        spec_name = spec.getNativeID()
+        sample_name = spec_name.split('_')[0]
+        key_spectra[spec_name] = sample_name
+    return key_spectra
+
+
+def map_repl_file(repl_to_sample):
+    repl_to_sample = csv.reader(open(repl_to_sample, "r"))
+    key_spectra = dict()
+    for row in repl_to_sample:
+        key_spectra[row[0]] = row[1]
+    return key_spectra
 
 class PreprocessingConsumer:
     def __init__(self, consumer_deiso, params, consumer_iso=None, normalize=False):
@@ -95,12 +111,56 @@ class PreprocessingConsumer:
         self._internal_consumer.consumeSpectrum(picked_spectrum)
 
 
-def to_peaklist(spectra, prep_params, output_dir, make_plot=False):
-    deiso_writer = oms.PlainMSDataWritingConsumer(output_dir + '/proc_deisotoped.mzML')
+def merge_replicates(deiso_exp, map_repl):
+    # Start the merger
+    repl_merger = oms.SpectraMerger()
+    # Set the parameters
+    merger_params = {
+        # Tolerance for binning peaks between replicates
+        'mz_binning_width': 0.4,
+        'mz_binning_width_unit': 'Da',
+        # Here we are telling to merge blocks of up to 5 spectra, which should be enough
+        # since we are working with blocks of 3 replicates
+        'block_method:rt_block_size': 5,
+        # This parameter set a maximum RT range for a block
+        # Using 0.0 will disable any RT restriction, since we're not even working with RTs
+        'block_method:rt_max_length': 0.0,
+        # Here we tell the algorithm to only go through MS1 spectra for merging,
+        # which is what we have.
+        'block_method:ms_levels': [1]
+    }
+    # Pass parameters to the merger
+    set_filter_parameters(repl_merger, merger_params)
+
+    merged_spectra = []
+    for k, spec_gr in it.groupby(deiso_exp.getSpectra(), lambda x: map_repl.get(x.getNativeID())):
+        spec_gr = list(spec_gr)
+        # If all 3 replicates are empty, create an empty merged spectrum manually
+        if all([s.size() == 0 for s in spec_gr]):
+            merged_spectrum = oms.MSSpectrum()
+        else:
+            # Create a temp MSExperiment with the replicates
+            sample_exp = oms.MSExperiment()
+            sample_exp.setSpectra(spec_gr)
+            # Perform merging
+            repl_merger.mergeSpectraBlockWise(sample_exp)
+            merged_spectrum = sample_exp.getSpectrum(0)
+        merged_spectrum.setNativeID(k)
+        merged_spectrum.setName(k)
+        merged_spectra.append(merged_spectrum)
+    # Initialize a new merged MSExperiment
+    allsamples_exp = oms.MSExperiment()
+    # Add the list of merged spectra to it
+    allsamples_exp.setSpectra(merged_spectra)
+    return allsamples_exp
+
+def to_peaklist(spectra, prep_params, repl_to_sample, output, make_plot=False):
+    output_dir, output_file = os.path.split(output)
+    deiso_writer = oms.PlainMSDataWritingConsumer(os.path.join(output_dir, '/proc_deisotoped.mzML'))
     nodeiso_writer = None
     if make_plot:
         nodeiso_writer = oms.PlainMSDataWritingConsumer(output_dir + '/proc_nodeisotoped.mzML')
-    deiso_consumer = PreprocessingConsumer(
+    prep_consumer = PreprocessingConsumer(
         deiso_writer, prep_params['params'], nodeiso_writer, normalize=False)
 
     if os.path.isfile(spectra):
@@ -108,20 +168,30 @@ def to_peaklist(spectra, prep_params, output_dir, make_plot=False):
     elif os.path.isdir(spectra):
         spectra_list = [os.path.join(spectra, f) for f in os.listdir(spectra) if f.endswith('mzML')]
     for m in spectra_list:
-        oms.MzMLFile().transform(m, deiso_consumer)
+        oms.MzMLFile().transform(m, prep_consumer)
 
-    del deiso_writer, nodeiso_writer, deiso_consumer
+    del deiso_writer, nodeiso_writer, prep_consumer
 
     deiso_exp = oms.MSExperiment()
-    oms.MzMLFile().load(output_dir + '/proc_deisotoped.mzML', deiso_exp)
+    oms.MzMLFile().load(os.path.join(output_dir, '/proc_deisotoped.mzML'), deiso_exp)
     deiso_exp.clearMetaDataArrays()
     if make_plot:
         nodeiso_exp = oms.MSExperiment()
         oms.MzMLFile().load(output_dir + '/proc_nodeisotoped.mzML', nodeiso_exp)
         nodeiso_exp.clearMetaDataArrays()
+        plot_npeaks(deiso_exp, nodeiso_exp, output_dir)
+
+    # Merge replicates
+    if repl_to_sample is not None:
+        map_repl = map_repl_file(repl_to_sample)
     else:
-        nodeiso_exp = None
-    return deiso_exp, nodeiso_exp
+        map_repl = map_repl_spectra_id(deiso_exp)
+    merged_spectra = merge_replicates(deiso_exp, map_repl)
+    merged_writer = oms.PlainMSDataWritingConsumer(output)
+    merged_writer.setExperimentalSettings(merged_spectra.getExperimentalSettings())
+    for s in merged_spectra.getSpectra():
+        merged_writer.consumeSpectrum(s)
+    del merged_writer
 
 
 def abline(slope, intercept, color, ax=None, label=None):
@@ -148,6 +218,7 @@ def plot_npeaks(deiso_exp, nodeiso_exp, output_dir):
     ax.legend(loc='best')
     fig.savefig(output_dir + '/npeaks.png')
 
+
 def main(spectra, output, prep_params, repl_to_sample, make_plot):
 
     output_dir, output_file = os.path.split(output)
@@ -156,19 +227,9 @@ def main(spectra, output, prep_params, repl_to_sample, make_plot):
             os.makedirs(output_dir)
     else:
         output_dir = os.getcwd()
-    print(output_file, output_dir)
+
     message.configure(output_dir)
-    print(prep_params)
-    deiso_exp, nodeiso_exp = to_peaklist(spectra, prep_params, output_dir, make_plot)
-
-    if make_plot:
-        plot_npeaks(deiso_exp, nodeiso_exp, output_dir)
-
-
-
-
-
-
+    to_peaklist(spectra, prep_params, repl_to_sample, output, make_plot)
 
 if __name__ == '__main__':
     main()
